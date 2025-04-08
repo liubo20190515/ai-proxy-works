@@ -4,8 +4,6 @@ import { cors } from "hono/cors"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
 import { logger } from "hono/logger"
-import { proxy } from 'hono/proxy'
-
 
 const app = new Hono()
 
@@ -35,12 +33,13 @@ const fetchWithTimeout = async (
   }, timeout)
 
   try {
-    const res = await proxy(url, {
-      ...options,
+    // Directly use standard fetch
+    const res = await fetch(url, {
+      ...options, // Pass method, headers, body etc.
       signal: controller.signal,
-    })
+    });
     clearTimeout(timeoutId)
-    return res
+    return res // Return the raw Response object
   } catch (error) {
     clearTimeout(timeoutId)
     if (controller.signal.aborted) {
@@ -104,7 +103,7 @@ app.post(
     const queryData = c.req.valid("query")
     const url = queryData.url
 
-    const res = await proxy(url, {
+    const res = await fetch(url, {
       method: c.req.method,
       body: c.req.raw.body,
       headers: c.req.raw.headers,
@@ -134,23 +133,36 @@ app.use(async (c: Context, next: Next) => {
     // headers.delete('content-length') // Let Workers/Hono handle this
     // headers.delete('host')           // Let Workers/Hono handle this
 
-    const res = await fetchWithTimeout(
+    // Get the raw Response from the target
+    const targetRes = await fetchWithTimeout(
       `${proxy.target}${url.pathname.replace(
         `/${proxy.pathSegment}/`,
         "/",
       )}${url.search}`,
       {
         method: c.req.method,
-        headers,
-        body: c.req.raw.body,
+        headers,             // Pass the modified headers
+        body: c.req.raw.body, // Pass the original body
         timeout: 60000,
       },
     )
 
-    return new Response(res.body, {
-      headers: res.headers,
-      status: res.status,
-    })
+    // Check if the fetch was successful before streaming
+    if (!targetRes) {
+      // fetchWithTimeout might return undefined/null on error before throwing, handle defensively
+      return c.text("Proxy fetch error", 500);
+    }
+
+    // Create a new Response, passing the target's body (ReadableStream) and headers directly.
+    // This enables streaming.
+    c.res = new Response(targetRes.body, {
+      headers: targetRes.headers,
+      status: targetRes.status,
+      statusText: targetRes.statusText,
+    });
+    // Need to return c.res or just modify c.res and call next() if Hono requires returning it?
+    // Hono middleware typically modifies 'c' or returns a Response. Returning c.res is safer.
+    return c.res;
   }
 
   next()
