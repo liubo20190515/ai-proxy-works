@@ -1,0 +1,21 @@
+# Top-level configuration
+name = "ai-proxy-worker" # Sets the name of your worker
+main = "dist/main.js"  # The entry point for your worker
+compatibility_date = "2024-07-25" # Use a recent compatibility date
+
+[build]
+command = "npm run build" # Command to build your worker (we'll add this script)
+
+# Explicitly define the main entry point as an ES Module
+[[rules]]
+type = "ESModule"
+glob = "dist/main.js"
+
+# Optional: Add environment variables, KV namespaces, D1 databases, etc., here
+# Example:
+# [vars]
+# MY_VARIABLE = "value"
+#
+# [[kv_namespaces]]
+# binding = "MY_KV_NAMESPACE"
+# id = "your_kv_namespace_id"
