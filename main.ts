@@ -38,8 +38,6 @@ const fetchWithTimeout = async (
     const res = await proxy(url, {
       ...options,
       signal: controller.signal,
-      // @ts-expect-error
-      duplex: "half",
     })
     clearTimeout(timeoutId)
     return res
@@ -133,8 +131,8 @@ app.use(async (c: Context, next: Next) => {
     if (proxy.pathSegment === "anthropic") {
       headers.delete("origin")
     }
-    headers.delete('content-length')
-    headers.delete('host')
+    // headers.delete('content-length') // Let Workers/Hono handle this
+    // headers.delete('host')           // Let Workers/Hono handle this
 
     const res = await fetchWithTimeout(
       `${proxy.target}${url.pathname.replace(
