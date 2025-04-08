@@ -9,7 +9,7 @@ command = "npm run build" # Command to build your worker (we'll add this script)
 # Explicitly define the main entry point as an ES Module
 [[rules]]
 type = "ESModule"
-glob = "dist/main.js"
+globs = ["dist/main.js"]
 
 # Optional: Add environment variables, KV namespaces, D1 databases, etc., here
 # Example:
